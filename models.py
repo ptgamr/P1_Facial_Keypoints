@@ -50,6 +50,25 @@ class Net(nn.Module):
         # self.fc3 = nn.Linear(1000, 136)
 
         # MODEL 5
+        # self.conv1 = nn.Conv2d(1, 32, 5) # (220,220)
+        # self.pool1 = nn.MaxPool2d(2) # (110, 110)
+        # self.pool1_drop = nn.Dropout(0.1)
+        # self.conv2 = nn.Conv2d(32, 64, 5) # (106, 106)
+        # self.pool2 = nn.MaxPool2d(2) # (53, 53)
+        # self.pool2_drop = nn.Dropout(0.2)
+        # self.conv3 = nn.Conv2d(64, 128, 4) # (50, 50)
+        # self.pool3 = nn.MaxPool2d(2) # (25, 25)
+        # self.pool3_drop = nn.Dropout(0.3)
+        # self.conv4 = nn.Conv2d(128, 256, 3) # (23, 23)
+        # self.pool4 = nn.MaxPool2d(2) # (11, 11)
+        # self.pool4_drop = nn.Dropout(0.4)
+        # self.fc1 = nn.Linear(256 * 11 * 11, 1000)
+        # self.fc1_drop = nn.Dropout(0.5)
+        # self.fc2 = nn.Linear(1000, 1000)
+        # self.fc2_drop = nn.Dropout(0.6)
+        # self.fc3 = nn.Linear(1000, 136)
+
+        # MODEL 7
         self.conv1 = nn.Conv2d(1, 32, 5) # (220,220)
         self.pool1 = nn.MaxPool2d(2) # (110, 110)
         self.pool1_drop = nn.Dropout(0.1)
@@ -59,14 +78,11 @@ class Net(nn.Module):
         self.conv3 = nn.Conv2d(64, 128, 4) # (50, 50)
         self.pool3 = nn.MaxPool2d(2) # (25, 25)
         self.pool3_drop = nn.Dropout(0.3)
-        self.conv4 = nn.Conv2d(128, 256, 3) # (23, 23)
-        self.pool4 = nn.MaxPool2d(2) # (11, 11)
-        self.pool4_drop = nn.Dropout(0.4)
-        self.fc1 = nn.Linear(256 * 11 * 11, 1000)
+        self.fc1 = nn.Linear(128 * 25 * 25, 500)
         self.fc1_drop = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(1000, 1000)
-        self.fc2_drop = nn.Dropout(0.6)
-        self.fc3 = nn.Linear(1000, 136)
+        self.fc2 = nn.Linear(500, 500)
+        self.fc2_drop = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(500, 136)
 
 
         ## Note that among the layers to add, consider including:
@@ -84,8 +100,6 @@ class Net(nn.Module):
         x = self.pool2_drop(x)
         x = self.pool3(F.relu(self.conv3(x)))
         x = self.pool3_drop(x)
-        x = self.pool4(F.relu(self.conv4(x)))
-        x = self.pool4_drop(x)
 
         x = x.view(x.size(0), -1)
 
