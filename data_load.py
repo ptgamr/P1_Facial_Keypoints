@@ -29,13 +29,13 @@ class FacialKeypointsDataset(Dataset):
     def __getitem__(self, idx):
         image_name = os.path.join(self.root_dir,
                                 self.key_pts_frame.iloc[idx, 0])
-        
+
         image = mpimg.imread(image_name)
-        
+
         # if image has an alpha color channel, get rid of it
         if(image.shape[2] == 4):
             image = image[:,:,0:3]
-        
+
         key_pts = self.key_pts_frame.iloc[idx, 1:].as_matrix()
         key_pts = key_pts.astype('float').reshape(-1, 2)
         sample = {'image': image, 'keypoints': key_pts}
@@ -44,30 +44,31 @@ class FacialKeypointsDataset(Dataset):
             sample = self.transform(sample)
 
         return sample
-    
 
-    
+
+
 # tranforms
 
 class Normalize(object):
-    """Convert a color image to grayscale and normalize the color range to [0,1]."""        
+    """Convert a color image to grayscale and normalize the color range to [0,1]."""
 
     def __call__(self, sample):
         image, key_pts = sample['image'], sample['keypoints']
-        
+
         image_copy = np.copy(image)
         key_pts_copy = np.copy(key_pts)
 
         # convert image to grayscale
         image_copy = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        
+
         # scale color range from [0, 255] to [0, 1]
         image_copy=  image_copy/255.0
-            
-        
+
+
         # scale keypoints to be centered around 0 with a range of [-1, 1]
         # mean = 100, sqrt = 50, so, pts should be (pts - 100)/50
-        key_pts_copy = (key_pts_copy - 100)/50.0
+        s = image.shape[0] / 2
+        key_pts_copy = (key_pts_copy - s)/s
 
 
         return {'image': image_copy, 'keypoints': key_pts_copy}
@@ -101,7 +102,7 @@ class Rescale(object):
         new_h, new_w = int(new_h), int(new_w)
 
         img = cv2.resize(image, (new_w, new_h))
-        
+
         # scale the pts, too
         key_pts = key_pts * [new_w / w, new_h / h]
 
@@ -130,8 +131,13 @@ class RandomCrop(object):
         h, w = image.shape[:2]
         new_h, new_w = self.output_size
 
-        top = np.random.randint(0, h - new_h)
-        left = np.random.randint(0, w - new_w)
+        top_max = min(max(key_pts[:,1].max() - new_h, 0), h - new_h - 1)
+        left_max = min(max(key_pts[:,0].max() - new_w, 0), w - new_w - 1)
+        top = np.random.randint(top_max, h - new_h)
+        left = np.random.randint(left_max, w - new_w)
+
+        # top = np.random.randint(0, h - new_h)
+        # left = np.random.randint(0, w - new_w)
 
         image = image[top: top + new_h,
                       left: left + new_w]
@@ -146,16 +152,71 @@ class ToTensor(object):
 
     def __call__(self, sample):
         image, key_pts = sample['image'], sample['keypoints']
-         
+
         # if image has no grayscale color channel, add one
         if(len(image.shape) == 2):
             # add that third color dim
             image = image.reshape(image.shape[0], image.shape[1], 1)
-            
+
         # swap color axis because
         # numpy image: H x W x C
         # torch image: C X H X W
         image = image.transpose((2, 0, 1))
-        
+
         return {'image': torch.from_numpy(image),
                 'keypoints': torch.from_numpy(key_pts)}
+
+# From: https://github.com/1adrianb/face-alignment/blob/master/face_alignment/utils.py
+class RandomFlip(object):
+    """Randomly flip image and keypoints to match"""
+
+    def __call__(self, sample):
+        image, key_pts = sample['image'], sample['keypoints']
+        if np.random.choice((True, False)):
+            image = self.flip(image)
+            key_pts = self.flip(key_pts, is_label=True)
+
+        return {'image': image, 'keypoints': key_pts}
+
+    def shuffle_lr(self, parts, pairs=None):
+        if pairs is None:
+            pairs = [[0, 16], [1, 15], [2, 14], [3, 13], [4, 12], [5, 11], [6, 10],
+                     [7, 9], [17, 26], [18, 25], [19, 24], [20, 23], [21, 22], [36, 45],
+                     [37, 44], [38, 43], [39, 42], [41, 46], [40, 47], [31, 35], [32, 34],
+                     [50, 52], [49, 53], [48, 54], [61, 63], [60, 64], [67, 65], [59, 55], [58, 56]]
+        for matched_p in pairs:
+            idx1, idx2 = matched_p[0], matched_p[1]
+            tmp = np.copy(parts[idx1])
+            np.copyto(parts[idx1], parts[idx2])
+            np.copyto(parts[idx2], tmp)
+        return parts
+
+
+    def flip(self, tensor, is_label=False):
+        was_cuda = False
+        if isinstance(tensor, torch.Tensor):
+            tensor = tensor.numpy()
+        elif isinstance(tensor, torch.cuda.FloatTensor):
+            tensor = tensor.cpu().numpy()
+            was_cuda = True
+
+        was_squeezed = False
+        if tensor.ndim == 4:
+            tensor = np.squeeze(tensor)
+            was_squeezed = True
+        if is_label:
+            #tensor = tensor.swapaxes(0, 1).swapaxes(1, 2)
+            #tensor = cv2.flip(self.shuffle_lr(tensor), 0).reshape(tensor.shape)
+            tensor[:,0] = tensor[:,0] * -1
+            tensor = self.shuffle_lr(tensor)
+            #tensor = tensor.swapaxes(2, 1).swapaxes(1, 0)
+        else:
+            tensor = tensor.swapaxes(0, 1).swapaxes(1, 2)
+            tensor = cv2.flip(tensor, 1).reshape(tensor.shape)
+            tensor = tensor.swapaxes(2, 1).swapaxes(1, 0)
+        if was_squeezed:
+            tensor = np.expand_dims(tensor, axis=0)
+        tensor = torch.from_numpy(tensor)
+        if was_cuda:
+            tensor = tensor.cuda()
+        return tensor
