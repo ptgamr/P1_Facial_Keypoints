@@ -62,7 +62,7 @@ class Normalize(object):
         image_copy = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
         # scale color range from [0, 255] to [0, 1]
-        image_copy=  image_copy/255.0
+        image_copy =  image_copy / 255.0
 
 
         # scale keypoints to be centered around 0 with a range of [-1, 1]
@@ -92,16 +92,18 @@ class Rescale(object):
 
         h, w = image.shape[:2]
         if isinstance(self.output_size, int):
+            rand_size = np.random.randint(self.output_size, 448)
+            # rand_size = 250
             if h > w:
-                new_h, new_w = self.output_size * h / w, self.output_size
+                new_h, new_w = rand_size * h / w, rand_size
             else:
-                new_h, new_w = self.output_size, self.output_size * w / h
+                new_h, new_w = rand_size, rand_size * w / h
         else:
             new_h, new_w = self.output_size
 
         new_h, new_w = int(new_h), int(new_w)
 
-        img = cv2.resize(image, (new_w, new_h))
+        img = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
         # scale the pts, too
         key_pts = key_pts * [new_w / w, new_h / h]
@@ -131,13 +133,44 @@ class RandomCrop(object):
         h, w = image.shape[:2]
         new_h, new_w = self.output_size
 
-        top_max = min(max(key_pts[:,1].max() - new_h, 0), h - new_h - 1)
-        left_max = min(max(key_pts[:,0].max() - new_w, 0), w - new_w - 1)
-        top = np.random.randint(top_max, h - new_h)
-        left = np.random.randint(left_max, w - new_w)
+        face_top = key_pts[:,1].min()
+        face_bottom = key_pts[:,1].max()
+        face_left = key_pts[:,0].min()
+        face_right = key_pts[:,0].max()
 
-        # top = np.random.randint(0, h - new_h)
-        # left = np.random.randint(0, w - new_w)
+        face_w = face_right - face_left
+        face_h = face_bottom - face_top
+
+        delta_h = new_h - face_h
+        delta_w = new_w - face_w
+
+        if delta_h > 0:
+            low = max(face_top - delta_h, 0)
+            high = face_top
+            top = np.random.randint(low, high if high > low else (low + 1))
+        else:
+            low = max(face_top, 0)
+            high = low + delta_h
+            top = np.random.randint(low, high if high > low else (low + 1))
+
+
+        if delta_w > 0:
+            low = max(face_left - delta_w, 0)
+            high = face_left
+            left = np.random.randint(low, high if high > low else (low + 1))
+        else:
+            low = max(face_left, 0)
+            high = low + delta_w
+            left = np.random.randint(low, high if high > low else (low + 1))
+
+
+        if (top + new_h) > h:
+            top -= top + new_h - h
+            top = max(top, 0)
+
+        if (left + new_w) > w:
+            left -= left + new_w - w
+            left = max(left, 0)
 
         image = image[top: top + new_h,
                       left: left + new_w]
