@@ -37,18 +37,18 @@ class Net(nn.Module):
         self.pool3 = nn.MaxPool2d(2) # (26, 26)
         self.pool3_drop = nn.Dropout(0.3)
 
-        self.conv4 = nn.Conv2d(128, 256, 5) # 26 - 5 + 1 = 22
-        self.conv4_bn = nn.BatchNorm2d(256)
-        self.pool4 = nn.MaxPool2d(2) # (11, 11)
-        self.pool4_drop = nn.Dropout(0.3)
+        # self.conv4 = nn.Conv2d(128, 256, 5) # 26 - 5 + 1 = 22
+        # self.conv4_bn = nn.BatchNorm2d(256)
+        # self.pool4 = nn.MaxPool2d(2) # (11, 11)
+        # self.pool4_drop = nn.Dropout(0.3)
 
-        self.fc1 = nn.Linear(256 * 11 * 11, 1000)
-        self.fc1_bn = nn.BatchNorm1d(1000)
+        self.fc1 = nn.Linear(128 * 26 * 26, 500)
+        self.fc1_bn = nn.BatchNorm1d(500)
         self.fc1_drop = nn.Dropout(0.5)
-        self.fc2 = nn.Linear(1000, 1000)
-        self.fc2_bn = nn.BatchNorm1d(1000)
+        self.fc2 = nn.Linear(500, 500)
+        self.fc2_bn = nn.BatchNorm1d(500)
         self.fc2_drop = nn.Dropout(0.5)
-        self.fc3 = nn.Linear(1000, 136)
+        self.fc3 = nn.Linear(500, 136)
 
 
         ## Note that among the layers to add, consider including:
@@ -66,8 +66,8 @@ class Net(nn.Module):
         x = self.pool2_drop(x)
         x = self.pool3(self.conv3_bn(F.relu(self.conv3(x))))
         x = self.pool3_drop(x)
-        x = self.pool4(self.conv4_bn(F.relu(self.conv4(x))))
-        x = self.pool4_drop(x)
+        # x = self.pool4(self.conv4_bn(F.relu(self.conv4(x))))
+        # x = self.pool4_drop(x)
 
         x = x.view(x.size(0), -1)
 
