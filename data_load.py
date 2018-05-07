@@ -83,23 +83,20 @@ class Rescale(object):
             to output_size keeping aspect ratio the same.
     """
 
-    def __init__(self, output_size):
-        assert isinstance(output_size, (int, tuple))
-        self.output_size = output_size
+    def __init__(self, output_size_range):
+        assert isinstance(output_size_range, list)
+        self.output_size_range = output_size_range
 
     def __call__(self, sample):
         image, key_pts = sample['image'], sample['keypoints']
 
         h, w = image.shape[:2]
-        if isinstance(self.output_size, int):
-            rand_size = np.random.randint(self.output_size, 448)
-            # rand_size = 250
-            if h > w:
-                new_h, new_w = rand_size * h / w, rand_size
-            else:
-                new_h, new_w = rand_size, rand_size * w / h
+        rand_size = np.random.randint(self.output_size_range[0], self.output_size_range[1])
+
+        if h > w:
+            new_h, new_w = rand_size * h / w, rand_size
         else:
-            new_h, new_w = self.output_size
+            new_h, new_w = rand_size, rand_size * w / h
 
         new_h, new_w = int(new_h), int(new_w)
 
